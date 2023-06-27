@@ -7,7 +7,7 @@
  * The ALU (Arithmetic Logic Unit).
  * Computes one of the following functions:
  * x+y, x-y, y-x, 0, 1, -1, x, y, -x, -y, !x, !y,
- * x+1, y+1, x-1, y-1, x&y, x|y on two 16-bit inputs, 
+ * x+1, y+1, x-1, y-1, x&y, x|y on two 16-bit inputs,
  * according to 6 input bits denoted zx,nx,zy,ny,f,no.
  * In addition, the ALU computes two 1-bit outputs:
  * if the ALU output == 0, zr is set to 1; otherwise zr is set to 0;
@@ -27,8 +27,8 @@
 // if (out < 0) set ng = 1
 
 CHIP ALU {
-    IN  
-        x[16], y[16],  // 16-bit inputs        
+    IN
+        x[16], y[16],  // 16-bit inputs
         zx, // zero the x input?
         nx, // negate the x input?
         zy, // zero the y input?
@@ -36,11 +36,45 @@ CHIP ALU {
         f,  // compute out = x + y (if 1) or x & y (if 0)
         no; // negate the out output?
 
-    OUT 
+    OUT
         out[16], // 16-bit output
         zr, // 1 if (out == 0), 0 otherwise
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-   // Put you code here:
+    // When zx == 0, zero out x.
+    Mux16 (a=x, b=false, sel=zx, out=x1);
+
+    // When nx == 1, flip bits of x.
+    Not16 (in=x1, out=notX1);
+    Mux16 (a=x1, b=notX1, sel=nx, out=x2);
+
+    // When zy == 0, zero out y.
+    Mux16 (a=y, b=false, sel=zy, out=y1);
+
+    // When ny == 1, flip bits of y.
+    Not16 (in=y1, out=notY1);
+    Mux16 (a=y1, b=notY1, sel=ny, out=y2);
+
+    // If f then out=x+y, else out=x&y.
+    Add16 (a=x2, b=y2, out=x2AddY2);
+    And16 (a=x2, b=y2, out=x2AndY2);
+    Mux16 (a=x2AndY2, b=x2AddY2, sel=f, out=out1);
+
+    // When ny == 1, flip bits of out1.
+    Not16 (in=out1, out=notOut1);
+    Mux16 (a=out1, b=notOut1, sel=no, out=out2);
+
+    // 1 if (out == 0), 0 otherwise
+    Or16 (a=out2, b=false, out[0..7]=frontHalfOut2, out[8..15]=secondHalfOut2);
+    Or8Way (in=frontHalfOut2, out=eightWayOrFrontHalf);
+    Or8Way (in=secondHalfOut2, out=eightWayOrSecondHalf);
+    Or (a=eightWayOrFrontHalf, b=eightWayOrSecondHalf, out=sixteenWayOr);
+    Mux (a=true, b=false, sel=sixteenWayOr, out=zr);
+
+    // 1 if (out < 0),  0 otherwise
+    Or16 (a=out2, b=false, out[15]=ng, out[0..14]=none);
+
+    // Pass through out2.
+    Or16(a=out2, b=false, out=out);
 }
