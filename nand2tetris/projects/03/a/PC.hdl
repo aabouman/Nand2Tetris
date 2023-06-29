@@ -16,5 +16,21 @@ CHIP PC {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    // If reset, sel 00
+    // else if load, sel 01
+    // else if inc, sel 10
+    // else sel 11
+
+    // select0 = !r && l
+    Not (in=reset, out=notReset);
+    And (a=notReset, b=load, out=select0);
+    // select1 = i && !r && !l
+    Not (in=load, out=notLoad);
+    And (a=notReset, b=notLoad, out=temp1);
+    And (a=inc, b=temp1, out=select1);
+
+    Inc16 (in=previousBit, out=incrementedPreviousBit);
+    Mux4Way16 (a=false, b=in, c=incrementedPreviousBit, d=previousBit, sel[1]=select1, sel[0]=select0, out=savedBit);
+	Register (in=savedBit, load=true, out=previousBit);
+	And16 (a=previousBit, b=previousBit, out=out);
 }
