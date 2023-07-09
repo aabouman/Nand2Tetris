@@ -13,19 +13,15 @@
 
 // Put your code here.
 
+// Global variables.
     @8192
     D=A
     @screen_words
     M=D
-
-    @last_keyboard_state
-    M=0
-    @curr_keyboard_state
-    M=0
-
     @black_screen_word
     M=-1
-
+    @white_screen_word
+    M=0
 
 (KEYBOARD_LOOP)
     @screen_itr
@@ -34,12 +30,28 @@
     // Load keyboard state.
     @KBD
     D=M
-    @keyboard_state
-    M=D
-    D=M
-    // If keyboard has any button pressed, loop.
-    @KEYBOARD_LOOP
+
+    // Select screen fill color.
+    @FILL
+    D;JNE
+    @CLEAR
     D;JEQ
+
+(FILL)
+    @black_screen_word
+    D=M
+    @screen_fill_color
+    M=D
+    @SCREEN_LOOP
+    0;JMP
+
+(CLEAR)
+    @white_screen_word
+    D=M
+    @screen_fill_color
+    M=D
+    @SCREEN_LOOP
+    0;JMP
 
 (SCREEN_LOOP)
     // Check if iterator is larger than R1.
@@ -57,7 +69,7 @@
     @screen_index
     M=D
 
-    @black_screen_word
+    @screen_fill_color
     D=M
     @screen_index
     A=M
@@ -70,6 +82,5 @@
     0;JMP
 
 (SCREEN_END)
-
     @KEYBOARD_LOOP
     0;JMP
