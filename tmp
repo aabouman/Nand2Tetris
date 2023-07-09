@@ -1,0 +1,41 @@
+
+(KEYBOARD_LOOP)
+    // Load keyboard state.
+    @KBD
+    D=M
+    @keyboard_state
+    M=D
+    D=M
+    // If keyboard has any button pressed, loop.
+    @KEYBOARD_LOOP
+    D;JEQ
+
+    //
+    @itr
+    M=0
+
+(SCREEN_LOOP)
+    // Check if iterator is larger than R1.
+    @screen_words
+    D=M
+    @itr
+    D=D-M
+    @SCREEN_END
+    D;JLE
+
+    @itr
+    D=M
+    @SCREEN
+    D=M+D
+    @screen_index
+    M=D
+
+    @black_screen_word
+    D=M
+    @screen_index
+    M=D
+
+(SCREEN_END)
+
+    @KEYBOARD_LOOP
+    0;JMP
