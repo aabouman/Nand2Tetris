@@ -1,0 +1,8 @@
+CHIP Equivalence {
+    IN a, b;
+    OUT out;
+
+    PARTS:
+    Xor (a=a[0], b=b[0], out=xor0);
+    Not (in=xor0, out=xnor0);
+}

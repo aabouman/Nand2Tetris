@@ -1,0 +1,36 @@
+CHIP Equivalence16 {
+    IN a[16], b[16];
+    OUT out;
+
+    PARTS:
+    Equivalence (a=a[0], b=b[0], out=xnor0);
+    Equivalence (a=a[1], b=b[1], out=xnor1);
+    Equivalence (a=a[2], b=b[2], out=xnor2);
+    Equivalence (a=a[3], b=b[3], out=xnor3);
+    Equivalence (a=a[4], b=b[4], out=xnor4);
+    Equivalence (a=a[5], b=b[5], out=xnor5);
+    Equivalence (a=a[6], b=b[6], out=xnor6);
+    Equivalence (a=a[7], b=b[7], out=xnor7);
+    Equivalence (a=a[8], b=b[8], out=xnor8);
+    Equivalence (a=a[9], b=b[9], out=xnor9);
+    Equivalence (a=a[10], b=b[10], out=xnor10);
+    Equivalence (a=a[11], b=b[11], out=xnor11);
+    Equivalence (a=a[12], b=b[12], out=xnor12);
+    Equivalence (a=a[13], b=b[13], out=xnor13);
+    Equivalence (a=a[14], b=b[14], out=xnor14);
+
+    And (a=xnor0, b=xnor1, out=out1);
+    And (a=out1, b=xnor2, out=out2);
+    And (a=out2, b=xnor3, out=out3);
+    And (a=out3, b=xnor4, out=out4);
+    And (a=out4, b=xnor5, out=out5);
+    And (a=out5, b=xnor6, out=out6);
+    And (a=out6, b=xnor7, out=out7);
+    And (a=out7, b=xnor8, out=out8);
+    And (a=out8, b=xnor9, out=out9);
+    And (a=out9, b=xnor10, out=out10);
+    And (a=out10, b=xnor11, out=out11);
+    And (a=out11, b=xnor12, out=out12);
+    And (a=out12, b=xnor13, out=out13);
+    And (a=out13, b=xnor14, out=out);
+}
