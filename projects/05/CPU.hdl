@@ -39,10 +39,8 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    Inc16 (in=currPC, out=incrementPC);
-
-    // A-Instruction
-    And16 (a=instruction, b=instruction, out=aInstructionNextA);
+    // Identify if A-instruction or B-instruction.
+    And (a=true, b=instruction[15], out=selectC);
 
     // C-Instruction
     // Choose whether to operate on M or A.
@@ -56,7 +54,6 @@ CHIP CPU {
     Or8Way (in[0]=setOnlyD, in[1]=setOnlyDM, in[2]=setOnlyAD, in[3]=setOnlyADM, in[4..7]=false, out=setD);
     // Should M be updated.
     Or8Way (in[0]=setOnlyM, in[1]=setOnlyDM, in[2]=setOnlyAM, in[3]=setOnlyADM, in[4..7]=false, out=setM);
-    And (a=setM, b=setM, out=cInstructionWriteM);
     // Update A, D, M.
     Mux16 (a=currA, b=comp, sel=setA, out=cInstructionNextA);
     Mux16 (a=currD, b=comp, sel=setD, out=cInstructionNextD);
@@ -78,25 +75,23 @@ CHIP CPU {
     And (a=jne, b=isNotZero, out=successJNE);
     And (a=jle, b=isLessThanOrEqualToZero, out=successJLE);
     And (a=jmp, b=jmp, out=successJMP);
-    // Update PC if jumping, otherwise simply increment PC.
+    // Update PC if jumping.
     Or8Way (in[7]=false, in[6]=successJGT, in[5]=successJEQ, in[4]=successJGE, in[3]=successJLT, in[2]=successJNE, in[1]=successJLE, in[0]=successJMP, out=jmpPC);
-    Mux16 (a=incrementPC, b=currA, sel=jmpPC, out=cInstructionNextPC);
 
-    // Identify if A-instruction or B-instruction.
-    And (a=true, b=instruction[15], out=selectC);
-    Mux16 (a=aInstructionNextA, b=cInstructionNextA, sel=selectC, out=nextA);
-    Mux16 (a=currD, b=cInstructionNextD, sel=selectC, out=nextD);
-    Mux16 (a=incrementPC, b=cInstructionNextPC, sel=selectC, out=aOrCInstructionNextPC);
-
+    // Handle outputs.
     And16 (a=currPC, b=currPC, out[15]=None1, out[0..14]=pc);
     And16 (a=currA, b=currA, out[15]=None2, out[0..14]=addressM);
     Mux16 (a=inM, b=cInstructionOutM, sel=selectC, out=outM);
-    Mux (a=false, b=cInstructionWriteM, sel=selectC, out=writeM);
+    Mux (a=false, b=setM, sel=selectC, out=writeM);
 
-    // Restart was requested.
-    Mux16 (a=aOrCInstructionNextPC, b[0..15]=false, sel=reset, out=nextPC);
+    // Update PC, specializing on jumps and resets.
+    And (a=jmpPC, b=selectC, out=performJMP);
+    Not (in=performJMP, out=incPC);
+    PC (in=currA, load=performJMP, inc=incPC, reset=reset, out=currPC);
 
+    // Update registers.
+    Mux16 (a=instruction, b=cInstructionNextA, sel=selectC, out=nextA);
+    Mux16 (a=currD, b=cInstructionNextD, sel=selectC, out=nextD);
     Register (in=nextA, load=true, out=currA);
     Register (in=nextD, load=true, out=currD);
-    Register (in=nextPC, load=true, out=currPC);
 }
