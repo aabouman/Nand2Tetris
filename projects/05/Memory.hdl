@@ -27,22 +27,12 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
-    Equivalence16 (a[15]=false, a[13..14]=true, a[0..12]=false,
-                   b[15]=false, b[0..14]=address, out=isKeyboardAddress);
+	DMux4Way(in=load, sel=address[13..14], a=isRamAddressA, b=isRamAddressB, c=isScreenAddress, d=isKeyboardAddress);
+	Or(a=isRamAddressA, b=isRamAddressB, out=isRamAddress);
 
-    Not (in=isKeyboardAddress, out=isNotKeyboardAddress);
-    And (a=isNotKeyboardAddress, b=address[14], out=isScreenAddress);
-    Not (in=isScreenAddress, out=isNotScreenAddress);
-    And (a=isNotScreenAddress, b=isNotKeyboardAddress, out=isRamAddress);
+    RAM16K (in=in, load=isRamAddress, address=address[0..13], out=outRam);
+    Screen (in=in, load=isScreenAddress, address=address[0..12], out=outScreen);
+    Keyboard (out=outKeyboard);
 
-    And (a=load, b=isKeyboardAddress, out=loadKeyboardAddress);
-    And (a=load, b=isScreenAddress, out=loadScreenAddress);
-    And (a=load, b=isRamAddress, out=loadRamAddress);
-
-    RAM16K (in=in, load=loadRamAddress, address=address[0..13], out=outRAM);
-    RAM8K (in=in, load=loadScreenAddress, address=address[0..12], out=outScreen);
-    Register (in=in, load=loadKeyboardAddress, out=outKeyboard);
-
-    Mux4Way16 (a=outRAM, b=outScreen, c=outKeyboard, d[0..15]=false, sel[1]=isKeyboardAddress, sel[0]=isScreenAddress, out=out);
+    Mux4Way16 (a=outRam, b=outRam, c=outScreen, d=outKeyboard, sel=address[13..14], out=out);
 }
