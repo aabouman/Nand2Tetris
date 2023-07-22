@@ -101,11 +101,10 @@ Base.length(b::StaticDictionary{N}) where {N} = N
 
 # pop static i
 # @SP
-# D = M
+# AM = M - 1
+# D = M         // D = RAM[SP-1]
 # @Foo.i
 # M = D
-# @SP
-# M = M - 1
 
 # push constant i
 # @i
@@ -264,10 +263,11 @@ push_pop_map = Dict{Regex,Function}(
 
     r"push pointer 0"           => (_i -> "@THIS\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push pointer 1"           => (_i -> "@THAT\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+)
 
-    r"pop static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => (_i -> "@SP\nD=M\n@Foo.$(_i)\nM=D\n@SP\nM=M-1\n"),
-
-    r"push static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => (_i -> "@Foo.$(_i)\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+static_memory_map = Dict{Regex,Function}(
+    r"pop static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => ((filename, _i) -> "@SP\nAM=M-1\nD=M\n@$(filename).$(_i)\nM=D\n"),
+    r"push static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => ((filename, _i) -> "@$(filename).$(_i)\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
 )
 
 arithmetic_logical_map = Dict{Regex,Function}(
@@ -304,6 +304,15 @@ function translate_push_pop(line::AbstractString, stream_out::IO, )
     end
 end
 
+function translate_static(line::AbstractString, stream_out::IO, filename::AbstractString, )
+    for (key, value) in static_memory_map
+        if occursin(key, line)
+            write(stream_out, value(filename, match(key, line).captures[1]))
+            break
+        end
+    end
+end
+
 function translate_arithmetic_logic(line::AbstractString, stream_out::IO, arithmetic_op_counts::Dict{Regex,Int})
     for (key, value) in arithmetic_logical_map
         if occursin(key, line)
@@ -314,7 +323,11 @@ function translate_arithmetic_logic(line::AbstractString, stream_out::IO, arithm
     end
 end
 
-function translate_vm(stream_in::IO, stream_out::IO, )
+function translate_vm(file_in, file_out, )
+    stream_in = open(file_in, "r")
+    stream_out = open(file_out, "w")
+    filename = split(basename(file_in), ".")[1]
+
     arithmetic_logical_map = Dict{Regex,Int}(
         r"add" => 0, r"sub" => 0, r"neg" => 0,
         r"eq"  => 0, r"gt"  => 0, r"lt"  => 0,
@@ -325,7 +338,11 @@ function translate_vm(stream_in::IO, stream_out::IO, )
         line = remove_comments(file_line)
         translate_push_pop(line, stream_out)
         translate_arithmetic_logic(line, stream_out, arithmetic_logical_map)
+        translate_static(line, stream_out, filename)
     end
+
+    close(stream_out)
+    close(stream_in)
 end
 
 vm_files = [joinpath(@__DIR__, "MemoryAccess", "DummyTest", "DummyTest.vm"),
@@ -342,10 +359,6 @@ asm_files = [joinpath(@__DIR__, "MemoryAccess", "DummyTest", "DummyTest.asm"),
              joinpath(@__DIR__, "StackArithmetic", "StackTest", "StackTest.asm")]
 
 for (f_in, f_out) in zip(vm_files, asm_files)
-    f_in = open(f_in,"r")
-    f_out = open(f_out,"w")
     translate_vm(f_in, f_out,)
-    close(f_in)
-    close(f_out)
 end
 
