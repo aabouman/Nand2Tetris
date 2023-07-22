@@ -98,16 +98,6 @@ Base.length(b::StaticDictionary{N}) where {N} = N
 # D = M         // D = RAM[SP-1]
 # @THIS
 # M = D
-# @SP
-# M = M - 1
-
-# pop pointer 1
-# @SP
-# D = M
-# @THAT
-# M = D
-# @SP
-# M = M - 1
 
 # pop static i
 # @SP
@@ -152,15 +142,6 @@ Base.length(b::StaticDictionary{N}) where {N} = N
 
 # push pointer 0
 # @THIS
-# D = M
-# @SP
-# A = M
-# M = D
-# @SP
-# M = M + 1
-
-# push pointer 1
-# @THAT
 # D = M
 # @SP
 # A = M
@@ -270,9 +251,6 @@ push_pop_map = Dict{Regex,Function}(
     r"pop this ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THIS\nD=D+M\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
     r"pop that ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THAT\nD=D+M\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
     r"pop temp ([0-7])"        => (_i -> "@$(_i)\nD=A\n@R5\nD=D+A\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
-    r"pop pointer 0"           => (_i -> "@SP\nAM=M-1\nD=M\n@THIS\nM=D\n@SP\nM=M-1\n"),
-    r"pop pointer 1"           => (_i -> "@SP\nAM=M-1\nD=M\n@THAT\nM=D\n@SP\nM=M-1\n"),
-    r"pop static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => (_i -> "@SP\nD=M\n@Foo.$(_i)\nM=D\n@SP\nM=M-1\n"),
 
     r"push constant ([-+]?\d+)" => (_i -> "@$(_i)\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push local ([-+]?\d+)"    => (_i -> "@$(_i)\nD=A\n@LCL\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
@@ -280,8 +258,15 @@ push_pop_map = Dict{Regex,Function}(
     r"push this ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THIS\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push that ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THAT\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push temp ([0-7])"        => (_i -> "@$(_i)\nD=A\n@R5\nA=D+A\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+
+    r"pop pointer 0"           => (_i -> "@SP\nAM=M-1\nD=M\n@THIS\nM=D\n"),
+    r"pop pointer 1"           => (_i -> "@SP\nAM=M-1\nD=M\n@THAT\nM=D\n"),
+
     r"push pointer 0"           => (_i -> "@THIS\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push pointer 1"           => (_i -> "@THAT\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+
+    r"pop static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => (_i -> "@SP\nD=M\n@Foo.$(_i)\nM=D\n@SP\nM=M-1\n"),
+
     r"push static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => (_i -> "@Foo.$(_i)\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
 )
 

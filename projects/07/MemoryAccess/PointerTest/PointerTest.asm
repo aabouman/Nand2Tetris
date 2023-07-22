@@ -10,8 +10,6 @@ AM=M-1
 D=M
 @THIS
 M=D
-@SP
-M=M-1
 @3040
 D=A
 @SP
@@ -24,8 +22,6 @@ AM=M-1
 D=M
 @THAT
 M=D
-@SP
-M=M-1
 @32
 D=A
 @SP
