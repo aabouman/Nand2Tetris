@@ -21,12 +21,12 @@ Base.length(b::StaticDictionary{N}) where {N} = N
 # D = A     // D = i
 # @LCL
 # D = D + M // D = i + RAM[LCL]
-# @R14
+# @R13
 # M = D     // RAM[14] = i + RAM[LCL]
 # @SP
 # AM=M-1
 # D = M     // D = RAM[SP-1]
-# @R14
+# @R13
 # A = M
 # M = D     // RAM[i + RAM[LCL]] = RAM[SP-1]
 
@@ -83,16 +83,14 @@ Base.length(b::StaticDictionary{N}) where {N} = N
 # D = A
 # @R5
 # D = D + A
-# @R14
+# @R13
 # M = D     # Store 5+i in R14
 # @SP
+# AM=M-1
+# D = M     // D = RAM[SP-1]
+# @R13
 # A = M
-# D = M
-# @R14
-# A = M     # Access RAM[5+i]
-# M = D     # Store
-# @SP
-# M = M - 1
+# M = D     // RAM[i + RAM[LCL]] = RAM[SP-1]
 
 # pop pointer 0
 # @SP
@@ -132,56 +130,23 @@ Base.length(b::StaticDictionary{N}) where {N} = N
 # @i
 # D = A      // D = i
 # @LCL
-# D = D + M  // D = RAM[i + RAM[LCL]]
+# A = D + M
+# D = M      // D = RAM[i + RAM[LCL]]
 # @SP
-# AM=M+1
+# A = M
 # M = D      // RAM[SP] = RAM[i + RAM[LCL]]
-
-# push argument i
-# @i
-# D = A
-# @ARG
-# A = D + A
-# D = M
-# @SP
-# A = M
-# M = D
-# @SP
-# M = M + 1
-
-# push this i
-# @i
-# D = A
-# @THIS
-# A = D + A
-# D = M
-# @SP
-# A = M
-# M = D
-# @SP
-# M = M + 1
-
-# push that i
-# @i
-# D = A
-# @THAT
-# A = D + A
-# D = M
-# @SP
-# A = M
-# M = D
 # @SP
 # M = M + 1
 
 # push temp i
 # @i
-# D = A
+# D = A         // D = i
 # @R5
 # A = D + A
-# D = M
+# D = M         // D = RAM[i + 5]
 # @SP
 # A = M
-# M = D
+# M = D         // RAM[SP] = RAM[i + 5]
 # @SP
 # M = M + 1
 
@@ -300,21 +265,21 @@ Base.length(b::StaticDictionary{N}) where {N} = N
 
 # %%
 push_pop_map = Dict{Regex,Function}(
-    r"pop local ([-+]?\d+)"    => (_i -> "@$(_i)\nD=A\n@LCL\nD=D+M\n@R14\nM=D\n@SP\nAM=M-1\nD=M\n@R14\nA=M\nM=D\n"),
-    r"pop argument ([-+]?\d+)" => (_i -> "@$(_i)\nD=A\n@ARG\nD=D+M\n@R14\nM=D\n@SP\nAM=M-1\nD=M\n@R14\nA=M\nM=D\n"),
-    r"pop this ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THIS\nD=D+M\n@R14\nM=D\n@SP\nAM=M-1\nD=M\n@R14\nA=M\nM=D\n"),
-    r"pop that ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THAT\nD=D+M\n@R14\nM=D\n@SP\nAM=M-1\nD=M\n@R14\nA=M\nM=D\n"),
-    r"pop temp ([0-7])"        => (_i -> "@$(_i)\nD=A\n@R5\nD=D+M\n@R14\nM=D\n@SP\nAM=M-1\nD=M\n@R14\nA=M\nM=D\n"),
+    r"pop local ([-+]?\d+)"    => (_i -> "@$(_i)\nD=A\n@LCL\nD=D+M\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
+    r"pop argument ([-+]?\d+)" => (_i -> "@$(_i)\nD=A\n@ARG\nD=D+M\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
+    r"pop this ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THIS\nD=D+M\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
+    r"pop that ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THAT\nD=D+M\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
+    r"pop temp ([0-7])"        => (_i -> "@$(_i)\nD=A\n@R5\nD=D+A\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n"),
     r"pop pointer 0"           => (_i -> "@SP\nAM=M-1\nD=M\n@THIS\nM=D\n@SP\nM=M-1\n"),
     r"pop pointer 1"           => (_i -> "@SP\nAM=M-1\nD=M\n@THAT\nM=D\n@SP\nM=M-1\n"),
     r"pop static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => (_i -> "@SP\nD=M\n@Foo.$(_i)\nM=D\n@SP\nM=M-1\n"),
 
     r"push constant ([-+]?\d+)" => (_i -> "@$(_i)\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
-    r"push local ([-+]?\d+)"    => (_i -> "@$(_i)\nD=A\n@LCL\nD=D+M\n@SP\nAM=M+1\nM=D\n"),
-    r"push argument ([-+]?\d+)" => (_i -> "@$(_i)\nD=A\n@ARG\nD=D+M\n@SP\nAM=M+1\nM=D\n"),
-    r"push this ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THIS\nD=D+M\n@SP\nAM=M+1\nM=D\n"),
-    r"push that ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THAT\nD=D+M\n@SP\nAM=M+1\nM=D\n"),
-    r"push temp ([0-7])"        => (_i -> "@$(_i)\nD=A\n@R5\nD=D+M\n@SP\nAM=M+1\nM=D\n"),
+    r"push local ([-+]?\d+)"    => (_i -> "@$(_i)\nD=A\n@LCL\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+    r"push argument ([-+]?\d+)" => (_i -> "@$(_i)\nD=A\n@ARG\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+    r"push this ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THIS\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+    r"push that ([-+]?\d+)"     => (_i -> "@$(_i)\nD=A\n@THAT\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
+    r"push temp ([0-7])"        => (_i -> "@$(_i)\nD=A\n@R5\nA=D+A\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push pointer 0"           => (_i -> "@THIS\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push pointer 1"           => (_i -> "@THAT\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
     r"push static \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => (_i -> "@Foo.$(_i)\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"),
@@ -378,7 +343,6 @@ function translate_vm(stream_in::IO, stream_out::IO, )
     end
 end
 
-# %%
 vm_files = [joinpath(@__DIR__, "MemoryAccess", "DummyTest", "DummyTest.vm"),
             joinpath(@__DIR__, "MemoryAccess", "BasicTest", "BasicTest.vm"),
             joinpath(@__DIR__, "MemoryAccess", "PointerTest", "PointerTest.vm"),
@@ -399,3 +363,4 @@ for (f_in, f_out) in zip(vm_files, asm_files)
     close(f_in)
     close(f_out)
 end
+
