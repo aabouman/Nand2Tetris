@@ -1,4 +1,6 @@
 Base.convert(::Type{BitVector}, int::Int16) = BitVector([bit == '1' for bit in bitstring(int)])
+is_a_instruction(line)::Bool = occursin('@', line)
+
 const predefined_symbols = merge(
     Dict{String,BitVector}("R$i" => Int16(i) for i in 0:15),
     Dict{String,BitVector}(
@@ -53,7 +55,6 @@ function comp_asm_map(char)
             "D|$char" => [0,1,0,1,0,1],
         )
 end
-
 
 function remove_comments(line::AbstractString)
     index = findfirst("//", line)
@@ -116,7 +117,6 @@ function ConstructHackSymbolTable(assembly::IO)
     return symbol_table
 end
 
-is_a_instruction(line)::Bool = occursin("@", line)
 
 function AssembleAInstruction(line, symbol_table::Dict{String,BitVector})
     regex_match = match(r"@(.*)", line).captures[1]
