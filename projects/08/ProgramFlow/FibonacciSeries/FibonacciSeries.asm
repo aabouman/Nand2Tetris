@@ -89,7 +89,7 @@ D=M
 @R13
 A=M
 M=D
-(FibonacciSeries..MAIN_LOOP_START)
+(.MAIN_LOOP_START)
 @0
 D=A
 @ARG
@@ -103,11 +103,11 @@ M=M+1
 @SP
 AM=M-1
 D=M
-@FibonacciSeries..COMPUTE_ELEMENT
+@.COMPUTE_ELEMENT
 D;JNE
-@FibonacciSeries..END_PROGRAM
+@.END_PROGRAM
 0;JMP
-(FibonacciSeries..COMPUTE_ELEMENT)
+(.COMPUTE_ELEMENT)
 @0
 D=A
 @THAT
@@ -213,6 +213,6 @@ D=M
 @R13
 A=M
 M=D
-@FibonacciSeries..MAIN_LOOP_START
+@.MAIN_LOOP_START
 0;JMP
-(FibonacciSeries..END_PROGRAM)
+(.END_PROGRAM)

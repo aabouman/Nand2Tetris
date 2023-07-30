@@ -1,12 +1,12 @@
-(SimpleFunction.SimpleFunction.test)
+(SimpleFunction.test)
 @2
 D=A
 @R13
 M=D
 D=M
-@SimpleFunction.SimpleFunction.test.ADD_LOCALS_LOOP_END
+@SimpleFunction.test.ADD_LOCALS_LOOP_END
 D;JLE
-(SimpleFunction.SimpleFunction.test.ADD_LOCALS_LOOP_START)
+(SimpleFunction.test.ADD_LOCALS_LOOP_START)
 @SP
 A=M
 M=0
@@ -14,9 +14,9 @@ M=0
 M=M+1
 @R13
 MD=M-1
-@SimpleFunction.SimpleFunction.test.ADD_LOCALS_LOOP_START
+@SimpleFunction.test.ADD_LOCALS_LOOP_START
 D;JGT
-(SimpleFunction.SimpleFunction.test.ADD_LOCALS_LOOP_END)
+(SimpleFunction.test.ADD_LOCALS_LOOP_END)
 @0
 D=A
 @LCL

@@ -58,6 +58,8 @@
 # M=M+1     // Push value of THAT onto stack.
 # @SP
 # D=M
+# @nArgs
+# D=D-A
 # @5
 # D=D-A
 # @nArgs
@@ -70,6 +72,7 @@
 # M=D
 # @file_name.function_name
 # 0;JMP
+# ($file_name.$function_name.RETURN_ADDRESS_$i)
 
 # return
 # @LCL
@@ -140,13 +143,21 @@ function remove_comments(line::AbstractString, )
     return line
 end
 
-function update_scope_data!(scope_data::ScopeData, line::AbstractString, )
+function set_file!(scope_data::ScopeData, path_or_file::AbstractString)
+    file_name = splitpath(path_or_file)[end]
+    @assert file_name[end-2:end] == ".vm" "$(file_name[end-2:end]) != \".vm\""
+    scope_data.file_name = file_name[1:end-3]
+end
+
+function update_function_scope!(scope_data::ScopeData, line::AbstractString)
     reg_match = match(r"function (.*) ([-+]?\d+)", line)
     if reg_match !== nothing
         scope_data.function_name = reg_match.captures[1]
         scope_data.function_arg_count = parse(Int, reg_match.captures[2])
     end
+end
 
+function update_call_counts!(scope_data::ScopeData, line::AbstractString, )
     for (key, _) in scope_data.arithmetic_logic_count
         if occursin(key, line)
             reg_match = match(key, line)
@@ -157,10 +168,10 @@ function update_scope_data!(scope_data::ScopeData, line::AbstractString, )
 
     reg_match = match(r"call (.*) \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b", line)
     if reg_match !== nothing
-        if haskey(scope_data.function_call_count, match.captures[1])
-            scope_data.function_call_count[match.captures[1]] += 1
+        if haskey(scope_data.function_call_count, reg_match.captures[1])
+            scope_data.function_call_count[reg_match.captures[1]] += 1
         else
-            scope_data.function_call_count[match.captures[1]] = 0
+            scope_data.function_call_count[reg_match.captures[1]] = 1
         end
     end
 end
@@ -237,9 +248,9 @@ end
 
 function translate_branching_command(scope_data::ScopeData, line::AbstractString, stream_out::IO, )
     branching_command_map = Dict{Regex,Function}(
-        r"label (.*)" => (reg_capture -> "($(scope_data.file_name).$(scope_data.function_name).$reg_capture)\n"),
-        r"goto (.*)" => (reg_capture -> "@$(scope_data.file_name).$(scope_data.function_name).$reg_capture\n0;JMP\n"),
-        r"if-goto (.*)" => (reg_capture -> "@SP\nAM=M-1\nD=M\n@$(scope_data.file_name).$(scope_data.function_name).$reg_capture\nD;JNE\n")
+        r"label (.*)" => (reg_capture -> "($(scope_data.function_name).$reg_capture)\n"),
+        r"goto (.*)" => (reg_capture -> "@$(scope_data.function_name).$reg_capture\n0;JMP\n"),
+        r"if-goto (.*)" => (reg_capture -> "@SP\nAM=M-1\nD=M\n@$(scope_data.function_name).$reg_capture\nD;JNE\n")
     )
 
     for (key, value) in branching_command_map
@@ -252,8 +263,8 @@ end
 
 function translate_function_command(scope_data::ScopeData, line::AbstractString, stream_out::IO, )
     function_command_map = Dict{Regex,Function}(
-        r"function (.*) \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => ((_function_name, _nVars)->"($(scope_data.file_name).$_function_name)\n@$(_nVars)\nD=A\n@R13\nM=D\nD=M\n@$(scope_data.file_name).$(scope_data.function_name).ADD_LOCALS_LOOP_END\nD;JLE\n($(scope_data.file_name).$(scope_data.function_name).ADD_LOCALS_LOOP_START)\n@SP\nA=M\nM=0\n@SP\nM=M+1\n@R13\nMD=M-1\n@$(scope_data.file_name).$(scope_data.function_name).ADD_LOCALS_LOOP_START\nD;JGT\n($(scope_data.file_name).$(scope_data.function_name).ADD_LOCALS_LOOP_END)\n"),
-        r"call (.*) \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => ((_function_name, _nArgs)->"@$(scope_data.file_name).$_function_name.RETURN_ADDRESS_$i\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@LCL\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@ARG\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@THIS\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@THAT\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@SP\nD=M\n@5\nD=D-A\n@ARG\nM=D\n@SP\nD=M\n@LCL\nM=D\n@$(scope_data.file_name).$(scope_data.function_name)\n0;JMP\n"),
+        r"function (.*) \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => ((_function_name, _nVars)->"($_function_name)\n@$(_nVars)\nD=A\n@R13\nM=D\nD=M\n@$(_function_name).ADD_LOCALS_LOOP_END\nD;JLE\n($(_function_name).ADD_LOCALS_LOOP_START)\n@SP\nA=M\nM=0\n@SP\nM=M+1\n@R13\nMD=M-1\n@$(_function_name).ADD_LOCALS_LOOP_START\nD;JGT\n($(_function_name).ADD_LOCALS_LOOP_END)\n"),
+        r"call (.*) \b(0|[1-9]\d?|1\d\d|2[0-3]\d)\b" => ((_function_name, _nArgs)->"@$(_function_name).RETURN_ADDRESS_$(scope_data.function_call_count[_function_name])\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@LCL\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@ARG\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@THIS\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@THAT\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n@SP\nD=M\n@$(_nArgs)\nD=D-A\n@5\nD=D-A\n@ARG\nM=D\n@SP\nD=M\n@LCL\nM=D\n@$(_function_name)\n0;JMP\n($(_function_name).RETURN_ADDRESS_$(scope_data.function_call_count[_function_name]))\n"),
         r"return" => (()->"@LCL\nD=M\n@R13\nM=D\n@5\nA=D-A\nD=M\n@R14\nM=D\n@SP\nAM=M-1\nD=M\n@ARG\nA=M\nM=D\n@ARG\nD=M+1\n@SP\nM=D\n@R13\nAM=M-1\nD=M\n@THAT\nM=D\n@R13\nAM=M-1\nD=M\n@THIS\nM=D\n@R13\nAM=M-1\nD=M\n@ARG\nM=D\n@R13\nAM=M-1\nD=M\n@LCL\nM=D\n@R14\nA=M\n0;JMP\n")
     )
 
@@ -265,46 +276,61 @@ function translate_function_command(scope_data::ScopeData, line::AbstractString,
     end
 end
 
-function translate_vm(file_in, file_out, )
-    stream_in = open(file_in, "r")
+function translate_sys_init(scope_data::ScopeData, line::AbstractString, stream_out::IO, )
+    seekstart(stream_out)
+    write(stream_out, "@256\nD=A\n@SP\nM=D\n")
+
+    translate_function_command(scope_data, line, stream_out, )
+end
+
+function translate_vm(file_ins::Vector{S}, file_out::S, ) where S<:AbstractString
+    scope_data = ScopeData()
+
     stream_out = open(file_out, "w")
-    file_name = split(basename(file_in), ".")[1]
 
-    scope_data = ScopeData(file_name=file_name)
+    if any(_x->splitpath(_x)[end] == "Sys.vm", file_ins)
+        line = "call Sys.init 0"
+        update_call_counts!(scope_data, line)
+        translate_sys_init(scope_data, line, stream_out, )
+    end
 
-    for file_line in eachline(stream_in)
-        line = remove_comments(file_line)
-        update_scope_data!(scope_data, line)
+    for file_in in file_ins
+        stream_in = open(file_in, "r")
+        set_file!(scope_data, file_in)
 
-        translate_push_pop(line, stream_out)
-        translate_arithmetic_logic(scope_data, line, stream_out)
-        translate_static(scope_data, line, stream_out)
-        translate_branching_command(scope_data, line, stream_out)
-        translate_function_command(scope_data, line, stream_out)
+
+        for file_line in eachline(stream_in)
+            line = remove_comments(file_line)
+            update_function_scope!(scope_data, line)
+            update_call_counts!(scope_data, line)
+
+            translate_push_pop(line, stream_out)
+            translate_arithmetic_logic(scope_data, line, stream_out)
+            translate_static(scope_data, line, stream_out)
+            translate_branching_command(scope_data, line, stream_out)
+            translate_function_command(scope_data, line, stream_out)
+        end
+
+        close(stream_in)
     end
 
     close(stream_out)
-    close(stream_in)
 end
 
-vm_files  = [joinpath(@__DIR__, "..", "07", "StackArithmetic", "SimpleAdd", "SimpleAdd.vm"),
-             joinpath(@__DIR__, "..", "07", "StackArithmetic", "StackTest", "StackTest.vm"),
-             joinpath(@__DIR__, "..", "07", "MemoryAccess", "BasicTest", "BasicTest.vm"),
-             joinpath(@__DIR__, "..", "07", "MemoryAccess", "PointerTest", "PointerTest.vm"),
-             joinpath(@__DIR__, "..", "07", "MemoryAccess", "StaticTest", "StaticTest.vm"),
-             joinpath(@__DIR__, "ProgramFlow", "BasicLoop", "BasicLoop.vm"),
-             joinpath(@__DIR__, "ProgramFlow", "FibonacciSeries", "FibonacciSeries.vm"),
-             joinpath(@__DIR__, "FunctionCalls", "SimpleFunction", "SimpleFunction.vm")]
-asm_files = [joinpath(@__DIR__, "..", "07", "StackArithmetic", "SimpleAdd", "SimpleAdd.asm"),
-             joinpath(@__DIR__, "..", "07", "StackArithmetic", "StackTest", "StackTest.asm"),
-             joinpath(@__DIR__, "..", "07", "MemoryAccess", "BasicTest", "BasicTest.asm"),
-             joinpath(@__DIR__, "..", "07", "MemoryAccess", "PointerTest", "PointerTest.asm"),
-             joinpath(@__DIR__, "..", "07", "MemoryAccess", "StaticTest", "StaticTest.asm"),
-             joinpath(@__DIR__, "ProgramFlow", "BasicLoop", "BasicLoop.asm"),
-             joinpath(@__DIR__, "ProgramFlow", "FibonacciSeries", "FibonacciSeries.asm"),
-             joinpath(@__DIR__, "FunctionCalls", "SimpleFunction", "SimpleFunction.asm")]
+directories = [
+    joinpath(@__DIR__, "ProgramFlow", "BasicLoop"),
+    joinpath(@__DIR__, "ProgramFlow", "FibonacciSeries"),
+    joinpath(@__DIR__, "FunctionCalls", "SimpleFunction"),
+    joinpath(@__DIR__, "FunctionCalls", "FibonacciElement"),
+    joinpath(@__DIR__, "FunctionCalls", "NestedCall"),
+    joinpath(@__DIR__, "FunctionCalls", "SimpleFunction"),
+    joinpath(@__DIR__, "FunctionCalls", "StaticsTest"),
+]
 
-for (f_in, f_out) in zip(vm_files, asm_files)
-    translate_vm(f_in, f_out,)
+for directory in directories
+    file_ins = filter(_x->splitext(_x)[2] == ".vm", joinpath.(Ref(directory), readdir(directory)))
+    file_out = joinpath(directory, splitpath(directory)[end] * ".asm")
+
+    translate_vm(file_ins, file_out, )
 end
 
