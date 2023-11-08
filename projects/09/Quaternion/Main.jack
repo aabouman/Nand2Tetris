@@ -1,0 +1,30 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/09/List/Main.jack
+
+/** Demonstrates the use of the List abstraction. */
+class Main {
+   function void main() {
+      var Array arr1;
+      let arr1 = Array.new(2);
+      let arr1[0] = 1;
+      let arr1[1] = 3;
+      let arr1[2] = 3;
+      let arr1[3] = 5;
+      var Array arr2;
+      let arr2 = Array.new(2);
+      let arr2[0] = 2;
+      let arr2[1] = 5;
+      let arr2[2] = 3;
+      let arr2[3] = 4;
+
+      var Quaternion q1;
+      let q1 = Quaternion.new(arr1);
+      var Quaternion q2;
+      let q2 = Quaternion.new(arr2);
+      do v.print();        // prints 2 3 5
+      do v.dispose();      // disposes the list
+      return;
+   }
+}

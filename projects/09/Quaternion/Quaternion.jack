@@ -1,0 +1,35 @@
+class Quaternion {
+    field int w;
+    field int x;
+    field int y;
+    field int z;
+
+    constructor Quaternion new(int w_var, int x_var, int y_var, int z_var) {
+        let w = w_var;
+        let x = x_var;
+        let y = y_var;
+        let z = z_var;
+        return this;
+    }
+
+    constructor Quaternion new(Array arr) {
+        let w = arr[0];
+        let x = arr[1];
+        let y = arr[2];
+        let z = arr[3];
+        return this;
+    }
+
+   method int getW() { return w; }
+   method int getX() { return x; }
+   method int getY() { return y; }
+   method int getZ() { return z; }
+
+    /** Returns the sum of this fraction and the other one. */
+    method Quaternion multiply(Quaternion other) {
+      var Quaternion q1;
+      let q1 = Quaternion.new(arr1);
+
+    }
+
+}
